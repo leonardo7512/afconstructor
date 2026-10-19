@@ -251,7 +251,10 @@
                 const descripcion = (row[iDescripcion] || '').trim();
                 const sku = normalizarSKU(row[iSku]);
                 if (!sku) continue; // fila vacía o de separación — se salta sin importar cuántas haya ni en qué posición quede
-                if (esFamiliaExcluidaDePrincipal(categoria)) continue; // viene solo de Excepciones
+                // Viene solo de Excepciones. EXCEPCIÓN: la Lata EXÓTICA Auto (FC13852–FC13858) es otro
+                // producto: vive en el principal con categoría "AROMATIZACIÓN LATA AUTO" y no está en
+                // Excepciones, así que no debe saltarse (misma regla que el Asistente y el Corrector).
+                if (esFamiliaExcluidaDePrincipal(categoria) && !/exotica/.test(normalizarTextoCatalogo(descripcion))) continue;
                 const detalleBruto = limpiarValor(row[iPrecioDetalle]) || 0;
                 const detalleNeto = limpiarValor(row[iNetoDetalle]) || 0;
                 const mayorBruto = iPrecioMayor !== -1 ? (limpiarValor(row[iPrecioMayor]) || 0) : 0;
@@ -374,8 +377,8 @@
             const cacheStatusEl = document.getElementById('cache-status');
             const CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 horas
 
-            const cachedRaw = localStorage.getItem('constructorVipCache');
-            const cacheTime = localStorage.getItem('constructorVipCacheTime');
+            const cachedRaw = localStorage.getItem('constructorVipCacheV2');
+            const cacheTime = localStorage.getItem('constructorVipCacheTimeV2');
             const cacheValid = cachedRaw && cacheTime && (Date.now() - parseInt(cacheTime)) < CACHE_DURATION;
 
             const usarCache = (motivo) => {
@@ -392,8 +395,8 @@
                     return true;
                 } catch (e) {
                     console.warn('Cache local con formato viejo/corrupto, se descarta:', e.message);
-                    localStorage.removeItem('constructorVipCache');
-                    localStorage.removeItem('constructorVipCacheTime');
+                    localStorage.removeItem('constructorVipCacheV2');
+                    localStorage.removeItem('constructorVipCacheTimeV2');
                     return false;
                 }
             };
@@ -417,8 +420,8 @@
                 if (csvExcepciones) procesarCatalogoExcepcionesSheets(csvExcepciones, pricesBySkuNuevo, products, categories);
                 if (products.length === 0) throw new Error('Las hojas respondieron pero no se encontraron productos');
 
-                localStorage.setItem('constructorVipCache', JSON.stringify({ products, pricesBySku: pricesBySkuNuevo }));
-                localStorage.setItem('constructorVipCacheTime', Date.now().toString());
+                localStorage.setItem('constructorVipCacheV2', JSON.stringify({ products, pricesBySku: pricesBySkuNuevo }));
+                localStorage.setItem('constructorVipCacheTimeV2', Date.now().toString());
                 terminarCargaCatalogo(products, pricesBySkuNuevo, categories);
                 statusEl.textContent = `✅ Conectado a Google Sheets — ${allProducts.length} productos`;
                 statusEl.style.color = 'var(--accent-green)';
